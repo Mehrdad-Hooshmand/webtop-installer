@@ -209,11 +209,14 @@ else
     # Create directory for SSL certificates
     mkdir -p /etc/nginx/ssl
     
+    # Get server IP
+    SERVER_IP=$(curl -s ifconfig.me || echo "127.0.0.1")
+    
     # Generate self-signed certificate
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout /etc/nginx/ssl/webtop.key \
         -out /etc/nginx/ssl/webtop.crt \
-        -subj "/C=US/ST=State/L=City/O=Organization/CN=$(curl -s ifconfig.me)" > /dev/null 2>&1
+        -subj "/C=US/ST=State/L=City/O=Organization/CN=$SERVER_IP" 2>&1 | grep -v "^+"
     
     echo -e "${GREEN}✓ Self-signed SSL certificate generated${NC}"
     
