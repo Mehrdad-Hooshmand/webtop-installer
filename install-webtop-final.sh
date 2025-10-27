@@ -210,7 +210,7 @@ else
     mkdir -p /etc/nginx/ssl
     
     # Get server IP
-    SERVER_IP=$(curl -s ifconfig.me || echo "127.0.0.1")
+    SERVER_IP=$(curl -s icanhazip.com || echo "127.0.0.1")
     
     # Generate self-signed certificate
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
@@ -266,7 +266,7 @@ fi
 
 # Save access information
 if [ "$ACCESS_CHOICE" = "1" ]; then
-    SERVER_IP=$(curl -s ifconfig.me)
+    SERVER_IP=$(curl -s icanhazip.com || echo "127.0.0.1")
     cat > /root/webtop-info.txt <<EOF
 ╔═══════════════════════════════════════════════════╗
 ║        Webtop Ubuntu Desktop Access Info          ║
