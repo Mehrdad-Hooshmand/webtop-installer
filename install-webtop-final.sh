@@ -25,8 +25,8 @@ read -p "Enter your choice (1 or 2): " LOCATION_CHOICE
 # Ask for access method
 echo ""
 echo -e "${YELLOW}Select access method:${NC}"
-echo "1) IP address (HTTP - Port 6901)"
-echo "2) Domain name (HTTPS with SSL certificate)"
+echo "1) IP address (HTTPS with self-signed certificate)"
+echo "2) Domain name (HTTPS with Let's Encrypt SSL)"
 read -p "Enter your choice (1 or 2): " ACCESS_CHOICE
 
 # If domain is selected, ask for domain name
@@ -46,7 +46,50 @@ echo ""
 echo -e "${GREEN}Starting installation...${NC}"
 echo ""
 
-# Configure ArvanCloud mirror for Iran
+# Update system and install dependencies
+echo -e "${YELLOW}Updating system packages...${NC}"
+apt update -qq
+apt install -y curl wget git openssl screen ca-certificates gnupg lsb-release > /dev/null 2>&1
+echo -e "${GREEN}✓ System packages updated${NC}"
+
+# Install Docker if not already installed
+if ! command -v docker &> /dev/null; then
+    echo -e "${YELLOW}Installing Docker...${NC}"
+    
+    if [ "$LOCATION_CHOICE" = "1" ]; then
+        # Iran - Manual installation from official Docker repository (bypasses get.docker.com block)
+        echo -e "${YELLOW}Using manual Docker installation for Iran...${NC}"
+        
+        # Remove old Docker versions
+        apt-get remove -y docker docker-engine docker.io containerd runc > /dev/null 2>&1 || true
+        
+        # Add Docker's official GPG key
+        mkdir -p /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null
+        
+        # Set up Docker repository
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        
+        # Install Docker Engine
+        apt-get update -qq
+        apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin > /dev/null 2>&1
+        
+    else
+        # International - Use official installation script (not blocked outside Iran)
+        echo -e "${YELLOW}Using official Docker installation script...${NC}"
+        curl -fsSL https://get.docker.com -o get-docker.sh
+        sh get-docker.sh > /dev/null 2>&1
+        rm get-docker.sh
+    fi
+    
+    systemctl enable docker > /dev/null 2>&1
+    systemctl start docker
+    echo -e "${GREEN}✓ Docker installed successfully${NC}"
+else
+    echo -e "${GREEN}✓ Docker already installed${NC}"
+fi
+
+# Configure ArvanCloud mirror for Iran (AFTER Docker installation)
 if [ "$LOCATION_CHOICE" = "1" ]; then
     echo -e "${YELLOW}Configuring ArvanCloud Docker mirror for Iran...${NC}"
     mkdir -p /etc/docker
@@ -55,31 +98,9 @@ if [ "$LOCATION_CHOICE" = "1" ]; then
   "registry-mirrors": ["https://docker.arvancloud.ir"]
 }
 EOF
-    echo -e "${GREEN}✓ ArvanCloud mirror configured${NC}"
-fi
-
-# Update system and install dependencies
-echo -e "${YELLOW}Updating system packages...${NC}"
-apt update -qq
-apt install -y curl wget git openssl screen > /dev/null 2>&1
-echo -e "${GREEN}✓ System packages updated${NC}"
-
-# Install Docker if not already installed
-if ! command -v docker &> /dev/null; then
-    echo -e "${YELLOW}Installing Docker...${NC}"
-    curl -fsSL https://get.docker.com -o get-docker.sh
-    sh get-docker.sh > /dev/null 2>&1
-    rm get-docker.sh
-    systemctl enable docker > /dev/null 2>&1
-    systemctl start docker
-    echo -e "${GREEN}✓ Docker installed successfully${NC}"
-else
-    echo -e "${GREEN}✓ Docker already installed${NC}"
-    # Restart Docker if ArvanCloud mirror was configured
-    if [ "$LOCATION_CHOICE" = "1" ]; then
-        systemctl restart docker
-        echo -e "${GREEN}✓ Docker restarted with ArvanCloud mirror${NC}"
-    fi
+    systemctl restart docker
+    sleep 3
+    echo -e "${GREEN}✓ ArvanCloud mirror configured and Docker restarted${NC}"
 fi
 
 # Generate random password
